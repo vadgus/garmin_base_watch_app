@@ -1,0 +1,98 @@
+garmin_base_watch_app - Public Project Requirements
+
+Repository Scope
+- This repository contains a generic Garmin Connect IQ watch app example for `venu3`.
+- The app receives JSON-like payloads from a phone bridge.
+- The app is a read-only browser of incoming payload data.
+- The repository intentionally contains no business-specific domain terminology.
+
+App Identity And Compatibility
+- App display name: `garmin_base_watch_app`.
+- Target product: `venu3`.
+- Required permission: `Communications`.
+
+Transport Model
+- The phone bridge sends authoritative transport payloads to the watch.
+- Payloads may be:
+  - normal renderable payloads
+  - `probe=true` reconnect/app-link probe payloads
+- Probe payloads must not replace the current renderable payload.
+- Probe payloads may still update phone-link activity and freshness state.
+
+Accepted Payload Model
+- The watch must accept arbitrary JSON-like root payloads delivered through CIQ transport containers.
+- The root payload may be:
+  - an object/map
+  - an array/list
+  - a scalar value
+- CIQ transport wrappers such as `snapshot`, `payload`, `data`, `body`, `message`, and `overview` must be unwrapped transparently.
+- Accepted payloads must be deep-canonicalized into plain watch-owned `Dictionary` / `Array` / scalar structures.
+- The UI must render only from canonicalized watch-owned structures.
+
+Optional Conventional Fields
+- The app may use these optional fields when present:
+  - `snapshot_ts_ms: long`
+  - `schema_version: int`
+  - `server_connected: boolean`
+  - `probe: boolean`
+  - `menu: object|array|scalar`
+  - `actions: object`
+- If `snapshot_ts_ms` is present on both current and incoming accepted payloads, it is the ordering key:
+  - older payloads must not replace newer accepted payloads.
+- If `snapshot_ts_ms` is missing, the watch may accept the payload in arrival order.
+
+Conventional Generic Example Schema
+- If the canonical root object contains `menu`, that node is the render root for the main watch menu.
+- If `menu` is missing, the canonical root object itself is the render root.
+- `actions` is an optional dictionary used to demonstrate companion metadata that may exist alongside `menu`.
+- `actions` entries should follow this public example shape:
+  - key = action identifier
+  - value = object with:
+    - `text: string`
+    - `action: string`
+    - `url: string`
+- The app is read-only and does not execute actions.
+
+Connection And Freshness Rules
+- Connection timeout: 12s from the last inbound payload.
+- Render freshness timeout: 5s from the last accepted renderable payload.
+- The watch must not treat a short 1-2 second transport gap as disconnected.
+- Status-only modes:
+  - `Phone disconnected` when there has been no inbound payload for the connection timeout window.
+  - `Waiting for data` when the phone is active but there is no fresh accepted renderable payload.
+- The app must not infer business/server semantics from missing payload fields.
+- On app start/stop, in-memory payload state must be cleared.
+
+UI Layout
+- The main screen must use native Garmin system list/menu UI.
+- The menu title must show compact payload age plus build version in the format `<age> b<number>`.
+- The compact age value must render on every refresh:
+  - `-` when there is no fresh accepted payload age
+  - integer seconds otherwise
+  - `60+` above one minute
+- In status-only modes, the list should show a single status row.
+- In normal mode, the list should show the current node of the canonical payload tree.
+- The main menu should be rebuilt from current descriptors on every refresh.
+- Non-leaf entries should be navigable.
+- Leaf scalar entries may open a read-only detail view if their content does not fit in a single line.
+
+Generic Payload Browser Rules
+- Root object payloads must render one row per key.
+- Root array payloads must render one row per index.
+- Scalar root payloads must be wrapped into a synthetic root object for display.
+- Object row label: key name.
+- Array row label: `[index]`.
+- Row secondary text should be a short preview:
+  - scalar value preview for leaf values
+  - `Object N` for nested objects
+  - `Array N` for nested arrays
+  - `null` for explicit null values
+- Selecting an object or array row must navigate into that node.
+- Selecting a scalar row must open a read-only detail screen/menu showing the full value.
+- A non-root node must provide a back row `..` at the top of the list.
+
+Implementation Structure
+- Parser/canonicalization logic must live in a dedicated protocol-support layer.
+- UI/menu orchestration must live in the app layer.
+- Build/deploy scripts kept in git should remain generic and public-safe.
+- The repository must not depend on private hosts, secrets, backend-specific headers, or business payload keys.

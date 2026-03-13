@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application id="99d2e9f1-3364-4f39-ae40-1fbefaa0f0cc" type="watch-app" name="@Strings.AppName" entry="WatchJsonBrowserApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="5.2.0">
+        <iq:products>
+            <iq:product id="venu3"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

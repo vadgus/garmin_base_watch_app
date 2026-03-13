@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "snapshot_ts_ms": 1760000000123,
+  "probe": false,
+  "server_connected": true,
+  "meta": {
+    "source": "phone-bridge",
+    "environment": "example",
+    "flags": {
+      "connected": true,
+      "debug": false
+    }
+  },
+  "menu": {
+    "overview": {
+      "title": "Example Payload",
+      "status": "connected",
+      "version": 3
+    },
+    "items": [
+      {
+        "id": "row-001",
+        "label": "Alpha",
+        "enabled": true,
+        "metrics": {
+          "count": 10,
+          "active": 2
+        }
+      },
+      {
+        "id": "row-002",
+        "label": "Beta",
+        "enabled": false,
+        "tags": ["demo", "watch", "json"]
+      }
+    ],
+    "details": {
+      "message": "This branch is rendered because it is under the menu key.",
+      "nullable_value": null
+    }
+  },
+  "actions": {
+    "open_alpha": {
+      "text": "Open Alpha",
+      "action": "open",
+      "url": "https://example.invalid/actions/open-alpha"
+    },
+    "refresh_beta": {
+      "text": "Refresh Beta",
+      "action": "refresh",
+      "url": "https://example.invalid/actions/refresh-beta"
+    }
+  }
+}

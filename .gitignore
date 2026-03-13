@@ -1,0 +1,25 @@
+# Build artifacts
+bin/
+build/
+/releases/
+*.prg
+*.mir
+*.mcgen
+*.mbc
+
+# Local-only docs/rules
+AGENTS.md
+
+# Local workspace links/temp
+tmp/
+local_keys/
+
+# Source asset copy kept outside resources
+/cron.png
+/deploy_custom.sh
+
+# OS/IDE noise
+.DS_Store
+.vscode/
+.idea/
+.build_version_state

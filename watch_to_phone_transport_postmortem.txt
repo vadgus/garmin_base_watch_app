@@ -1,0 +1,102 @@
+Watch -> Phone Transport Postmortem
+
+Purpose
+- This document is the canonical summary of the failed attempt to use Garmin Connect IQ app-event messaging for watch -> phone command delivery.
+- Keep this file in both the watch repo and the Android repo to avoid repeating the same investigation later.
+
+Decision
+- Do not continue building the command path on top of Connect IQ watch -> phone app-event transport.
+- Treat this path as non-production and unreliable for command delivery on the tested setup.
+- Future command delivery from the watch should go directly to a server via `Communications.makeWebRequest()`, with the phone acting only as an Internet bridge when needed.
+
+Original Goal
+- User presses a command on the Garmin watch.
+- The Android app receives the command locally.
+- The Android app performs the rest of the work.
+
+Why This Direction Was Chosen Initially
+- The mobile app already existed.
+- A watch<->phone protocol already existed.
+- Garmin officially exposes companion messaging APIs for watch<->phone communication.
+- Local phone-side execution looked preferable to sending commands through a server.
+
+What Was Implemented And Tested
+- Main watch app transport path using companion messaging.
+- Multiple reduced test builds of the watch app.
+- A minimal transport harness.
+- A stripped Android transport-only mode with:
+  - no backend
+  - no snapshot logic
+  - no business-specific watch UI logic
+  - no openApplication flow
+  - no retry/queue/debounce path
+- Ready-handshake experiments from Android to watch.
+- Auto-ping experiments from watch to phone.
+- Comparison against an adapted clone of Garmin's `Comm` sample.
+- Clean reconnect / cold-start / listener ownership checks on Android.
+
+What Was Proven
+- Phone -> watch messaging works in the same environment.
+- The watch can receive phone-originated messages in at least some runs.
+- The watch-side code reaches real `Communications.transmit(...)` calls.
+- The watch-side transmit callback often returns error almost immediately after send.
+- Android receives zero watch-originated app-event callbacks during real watch send attempts.
+- In the decisive runs, Android showed:
+  - no `RX app_event`
+  - no `RX_PING`
+  - no `TX_PONG`
+- This means the failure occurs before Android app-level payload handling.
+
+What Was Ruled Out
+- Payload schema as the primary cause.
+- Main app UI/business logic as the primary cause.
+- Android app binding mismatch as the primary cause.
+- Android duplicate manager ownership as the primary cause.
+- Android bridge ON/OFF mode as the primary cause.
+- Early-send-before-open in every failing run.
+- A missing Android reply path in the minimal ping/pong test.
+
+Observed Symptoms
+- Watch-side transmit callback returning error almost immediately.
+- Android app-level receive callback never firing for watch-originated messages.
+- In some runs, low-level Garmin/BLE/GATT transport churn appeared around watch-originated attempts.
+- In other decisive runs, Android remained stable and quiet, but still received nothing.
+- This made payload parsing and business logic explanations no longer credible.
+
+Key Technical Conclusion
+- The failing layer is below Android payload handling.
+- The most likely failure area is Garmin BLE / Connect IQ transport-session behavior on the watch -> phone path.
+- Even if parts of the environment can be stabilized, this path has already consumed disproportionate time and still does not provide a reliable command channel.
+
+Why We Should Not Revisit This Again
+- The investigation already moved from full app logic to minimal transport-only repro.
+- The problem still reproduced after stripping almost everything away.
+- Further effort would likely be platform-debugging against Garmin transport behavior rather than product development.
+- The expected payoff is poor compared with the simpler alternative below.
+
+Recommended Architecture Going Forward
+- Keep using watch UI on Garmin only for read-only or server-bound interactions.
+- Send commands directly from the watch to the server using `Communications.makeWebRequest()`.
+- Let Garmin Connect Mobile and the phone act only as Internet transport when needed.
+- Do not require the Android app to be the receiver of the command itself.
+
+Why The New Direction Is Better
+- It uses Garmin's higher-level web request path instead of the failing companion app-event path.
+- It removes the unreliable watch -> Android local command hop.
+- It is simpler to observe, retry, log, and support.
+- It matches the actual product need better: a command from the watch must cause a remote action, not necessarily a local Android callback.
+
+Allowed Future Work
+- Use the Android app only for phone -> watch data delivery if that path remains useful.
+- Evaluate notification actions as a separate fallback channel for local phone-side actions, if ever needed.
+- Evaluate custom BLE only as a separate spike, not as a continuation of this failed CIQ companion transport path.
+
+Disallowed Future Work
+- Do not restart the same watch -> phone CIQ app-event investigation unless there is a completely new external factor:
+  - a new Garmin platform version with a documented fix
+  - a new device family
+  - an official Garmin reproducible sample demonstrating the exact missing behavior on the target stack
+
+Canonical Outcome
+- For this project, treat "watch sends command directly to Android companion app via CIQ app events" as abandoned.
+- Replace it with "watch sends HTTP request directly to server".
